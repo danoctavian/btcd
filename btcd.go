@@ -40,8 +40,12 @@ func btcdMain(serverChan chan<- *server) error {
 	cfg = tcfg
 	defer backendLog.Flush()
 
+
+	btcdLog.Infof("Running a custom btcd.")
 	// Show version at startup.
 	btcdLog.Infof("Version %s", version())
+
+	return nil
 
 	// Enable http profiling server if requested.
 	if cfg.Profile != "" {
