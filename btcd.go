@@ -14,6 +14,8 @@ import (
 	"runtime/pprof"
 
 	"github.com/btcsuite/btcd/limits"
+
+	ipfs "github.com/btcsuite/btcd/ipfs"
 )
 
 var (
@@ -44,6 +46,8 @@ func btcdMain(serverChan chan<- *server) error {
 	btcdLog.Infof("Running a custom btcd.")
 	// Show version at startup.
 	btcdLog.Infof("Version %s", version())
+
+	ipfs.TestRun()
 
 	return nil
 
