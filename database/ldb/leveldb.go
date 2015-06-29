@@ -47,6 +47,9 @@ type LevelDb struct {
 
 	lbatch *leveldb.Batch
 
+	//blockstore
+	blockstore *BlockStore
+
 	nextBlock int64
 
 	lastBlkShaCached bool
@@ -181,6 +184,10 @@ func openDB(dbpath string, create bool) (pbdb database.Db, err error) {
 			db.txUpdateMap = map[wire.ShaHash]*txUpdateObj{}
 			db.txSpentUpdateMap = make(map[wire.ShaHash]*spentTxUpdate)
 
+
+			// FIXME: add implementation
+			db.blockstore = nil
+
 			pbdb = &db
 		}
 	}()
@@ -275,7 +282,7 @@ func CreateDB(args ...interface{}) (database.Db, error) {
 	}
 	return db, err
 }
-
+sett
 func (db *LevelDb) close() error {
 	return db.lDb.Close()
 }
