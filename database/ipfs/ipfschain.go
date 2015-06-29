@@ -14,9 +14,8 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btclog"
 	"github.com/btcsuite/btcutil"
-
 )
-	*/
+*/
 
 
 
