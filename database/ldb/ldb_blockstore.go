@@ -38,11 +38,11 @@ func (bs *LdbBlockStore) GetBlock(blkHeight int64) (rsha *wire.ShaHash, rbuf []b
 	return &sha, blockdata, nil								
 }
 
-/*
-GetBlock() ()
-DeleteBlock(sha *wire.ShaHash) (rerr error)
 
-*/
+func (bs *LdbBlockStore) DeleteBlock(height int64) {
+	bs.lBatch.Delete(int64ToKey(height))	
+}
+
 
 
 
