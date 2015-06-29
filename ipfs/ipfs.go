@@ -10,7 +10,7 @@ import (
 func TestRun() {
   fmt.Println("this is a test run")
 
-  data := []byte("hello")
+  data := []byte("hello!")
   h, err := mh.Sum(data, mh.DSHA2_256, -1)
   fmt.Println(h.HexString())
   fmt.Println(err)

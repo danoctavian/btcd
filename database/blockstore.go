@@ -1,6 +1,6 @@
 package database
 
-interface BlockStore {
+type BlockStore interface {
 	/*
 	PutBlock() (, err)
 	GetBlock() ()

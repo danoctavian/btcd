@@ -48,7 +48,7 @@ type LevelDb struct {
 	lbatch *leveldb.Batch
 
 	//blockstore
-	blockstore *BlockStore
+	blockstore *database.BlockStore
 
 	nextBlock int64
 
@@ -282,7 +282,7 @@ func CreateDB(args ...interface{}) (database.Db, error) {
 	}
 	return db, err
 }
-sett
+
 func (db *LevelDb) close() error {
 	return db.lDb.Close()
 }
