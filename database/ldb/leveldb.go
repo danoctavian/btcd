@@ -17,7 +17,6 @@ import (
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/goleveldb/leveldb"
 	"github.com/btcsuite/goleveldb/leveldb/opt"
-
 )
 
 const (
@@ -49,7 +48,7 @@ type LevelDb struct {
 	lbatch *leveldb.Batch
 
 	//blockstore
-	blockstore *database.BlockStore
+	blockstore database.BlockStore
 
 	nextBlock int64
 
@@ -186,8 +185,7 @@ func openDB(dbpath string, create bool) (pbdb database.Db, err error) {
 			db.txSpentUpdateMap = make(map[wire.ShaHash]*spentTxUpdate)
 
 			// FIXME: add implementation
-			bs := (database.BlockStore)(LdbBlockStore{db.lBatch(), db.lDb, db.ro})
-			db.blockstore = &bs
+			db.blockstore = LdbBlockStore{db.lBatch(), db.lDb, db.ro}
 
 			pbdb = &db
 		}
@@ -353,7 +351,7 @@ func (db *LevelDb) DropAfterBlockBySha(sha *wire.ShaHash) (rerr error) {
 			db.txUpdateMap[*tx.Sha()] = &txUo
 		}
 		db.lBatch().Delete(shaBlkToKey(blksha))
-		db.lBatch().Delete(int64ToKey(height))
+		db.blockstore.DeleteBlock(height)
 	}
 
 	// update the last block cache

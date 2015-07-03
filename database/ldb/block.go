@@ -89,24 +89,7 @@ func (db *LevelDb) getBlkLoc(sha *wire.ShaHash) (int64, error) {
 }
 
 func (db *LevelDb) getBlkByHeight(blkHeight int64) (rsha *wire.ShaHash, rbuf []byte, err error) {
-	var blkVal []byte
-
-	key := int64ToKey(blkHeight)
-
-	blkVal, err = db.lDb.Get(key, db.ro)
-	if err != nil {
-		log.Tracef("failed to find height %v", blkHeight)
-		return // exists ???
-	}
-
-	var sha wire.ShaHash
-
-	sha.SetBytes(blkVal[0:32])
-
-	blockdata := make([]byte, len(blkVal[32:]))
-	copy(blockdata[:], blkVal[32:])
-
-	return &sha, blockdata, nil
+	return db.blockstore.GetBlock(blkHeight)
 }
 
 func (db *LevelDb) getBlk(sha *wire.ShaHash) (rblkHeight int64, rbuf []byte, err error) {
@@ -139,7 +122,7 @@ func (db *LevelDb) setBlk(sha *wire.ShaHash, blkHeight int64, buf []byte) {
 	copy(blkVal[len(sha):], buf)
 
 	db.lBatch().Put(shaKey, lw[:])
-	db.lBatch().Put(blkKey, blkVal)
+	db.blockstore.PutBlock(blkKey, blkVal)
 }
 
 // insertSha stores a block hash and its associated data block with a
