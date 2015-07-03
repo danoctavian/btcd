@@ -12,12 +12,11 @@ type LdbBlockStore struct {
 	ro  *opt.ReadOptions
 }
 
-
-func (bs *LdbBlockStore) PutBlock(blkKey, blkVal []byte) {
+func (bs LdbBlockStore) PutBlock(blkKey, blkVal []byte) {
 	bs.lBatch.Put(blkKey, blkVal)
 }
 
-func (bs *LdbBlockStore) GetBlock(blkHeight int64) (rsha *wire.ShaHash, rbuf []byte, err error) {
+func (bs LdbBlockStore) GetBlock(blkHeight int64) (rsha *wire.ShaHash, rbuf []byte, err error) {
 	var blkVal []byte
 
 	key := int64ToKey(blkHeight)
@@ -38,8 +37,7 @@ func (bs *LdbBlockStore) GetBlock(blkHeight int64) (rsha *wire.ShaHash, rbuf []b
 	return &sha, blockdata, nil								
 }
 
-
-func (bs *LdbBlockStore) DeleteBlock(height int64) {
+func (bs LdbBlockStore) DeleteBlock(height int64) {
 	bs.lBatch.Delete(int64ToKey(height))	
 }
 

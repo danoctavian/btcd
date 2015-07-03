@@ -17,6 +17,7 @@ import (
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/goleveldb/leveldb"
 	"github.com/btcsuite/goleveldb/leveldb/opt"
+
 )
 
 const (
@@ -184,9 +185,9 @@ func openDB(dbpath string, create bool) (pbdb database.Db, err error) {
 			db.txUpdateMap = map[wire.ShaHash]*txUpdateObj{}
 			db.txSpentUpdateMap = make(map[wire.ShaHash]*spentTxUpdate)
 
-
 			// FIXME: add implementation
-			db.blockstore = nil
+			bs := (database.BlockStore)(LdbBlockStore{db.lBatch(), db.lDb, db.ro})
+			db.blockstore = &bs
 
 			pbdb = &db
 		}
