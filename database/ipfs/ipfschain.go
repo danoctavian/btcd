@@ -5,6 +5,8 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/ipfs/go-ipfs/core"
 	fsrepo "github.com/ipfs/go-ipfs/repo/fsrepo"
+	dag "github.com/ipfs/go-ipfs/merkledag"
+
   "golang.org/x/net/context"
 
 /*
@@ -18,8 +20,6 @@ import (
 	"github.com/btcsuite/btclog"
 	"github.com/btcsuite/btcutil"
 	*/
-
-
 )
 
 // FIXME: implement
@@ -49,13 +49,11 @@ func NewIpfsChain() *IpfsChain {
 	return &IpfsChain{node}
 }
 
-func (ic IpfsChain) PutBlock(blkKey, blkVal []byte) {
+func (ic IpfsChain) PutBlock(blkKey []byte, prevSha *wire.ShaHash, blkVal []byte) {
 
-	/*
-	dagNode := &dag.Node{Data: ft.FolderPBData()}
 
-	*/
-
+	dagNode := &dag.Node{Data: []byte("hello my friend")}
+	ic.node.DAG.Add(dagNode)
 }
 
 func (ic IpfsChain) GetBlock(blkHeight int64) (rsha *wire.ShaHash, rbuf []byte, err error) {

@@ -109,7 +109,7 @@ func (db *LevelDb) getBlk(sha *wire.ShaHash) (rblkHeight int64, rbuf []byte, err
 	return blkHeight, buf, nil
 }
 
-func (db *LevelDb) setBlk(sha *wire.ShaHash, blkHeight int64, buf []byte) {
+func (db *LevelDb) setBlk(sha *wire.ShaHash, prevSha *wire.ShaHash, blkHeight int64, buf []byte) {
 	// serialize
 	var lw [8]byte
 	binary.LittleEndian.PutUint64(lw[0:8], uint64(blkHeight))
@@ -122,7 +122,7 @@ func (db *LevelDb) setBlk(sha *wire.ShaHash, blkHeight int64, buf []byte) {
 	copy(blkVal[len(sha):], buf)
 
 	db.lBatch().Put(shaKey, lw[:])
-	db.blockstore.PutBlock(blkKey, blkVal)
+	db.blockstore.PutBlock(blkKey, prevSha, blkVal)
 }
 
 // insertSha stores a block hash and its associated data block with a
@@ -145,7 +145,7 @@ func (db *LevelDb) insertBlockData(sha *wire.ShaHash, prevSha *wire.ShaHash, buf
 	// TODO(drahn) check curfile filesize, increment curfile if this puts it over
 	blkHeight := oBlkHeight + 1
 
-	db.setBlk(sha, blkHeight, buf)
+	db.setBlk(sha, prevSha, blkHeight, buf)
 
 	// update the last block cache
 	db.lastBlkShaCached = true

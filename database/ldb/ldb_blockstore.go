@@ -12,7 +12,7 @@ type LdbBlockStore struct {
 	ro  *opt.ReadOptions
 }
 
-func (bs LdbBlockStore) PutBlock(blkKey, blkVal []byte) {
+func (bs LdbBlockStore) PutBlock(blkKey []byte, prevSha *wire.ShaHash, blkVal []byte) {
 	bs.lBatch.Put(blkKey, blkVal)
 }
 
