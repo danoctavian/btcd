@@ -17,6 +17,7 @@ import (
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/goleveldb/leveldb"
 	"github.com/btcsuite/goleveldb/leveldb/opt"
+	"github.com/btcsuite/btcd/database/ipfs"
 )
 
 const (
@@ -184,9 +185,9 @@ func openDB(dbpath string, create bool) (pbdb database.Db, err error) {
 			db.txUpdateMap = map[wire.ShaHash]*txUpdateObj{}
 			db.txSpentUpdateMap = make(map[wire.ShaHash]*spentTxUpdate)
 
-			// FIXME: add implementation
-			db.blockstore = LdbBlockStore{db.lBatch(), db.lDb, db.ro}
-
+			// FIXME: remove the first implementation
+			db.blockstore =  LdbBlockStore{db.lBatch(), db.lDb, db.ro}
+			db.blockstore =  ipfs.NewIpfsChain()
 			pbdb = &db
 		}
 	}()

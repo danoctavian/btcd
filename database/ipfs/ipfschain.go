@@ -1,8 +1,13 @@
 package ipfs
 
-	/*
 import (
 
+	"github.com/btcsuite/btcd/wire"
+	"github.com/ipfs/go-ipfs/core"
+	fsrepo "github.com/ipfs/go-ipfs/repo/fsrepo"
+  "golang.org/x/net/context"
+
+/*
 	"encoding/binary"
 	"fmt"
 	"os"
@@ -10,22 +15,55 @@ import (
 	"sync"
 
 	"github.com/btcsuite/btcd/database"
-
-	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btclog"
 	"github.com/btcsuite/btcutil"
+	*/
+
+
 )
-*/
-
-
 
 // FIXME: implement
 type IpfsChain struct {
-	x int
+	node *core.IpfsNode
 }
 
+func NewIpfsChain() *IpfsChain {
 
+	/* run ipfs node */
+  r, err := fsrepo.Open("~/.ipfs")
+  if err != nil {
+    panic(err)
+  }
 
+  nb := core.NewNodeBuilder().Online()
+  nb.SetRepo(r)
+
+  ctx, cancel := context.WithCancel(context.Background())
+  defer cancel()
+
+  node, err := nb.Build(ctx)
+  if err != nil {
+    panic(err)
+  }
+
+	return &IpfsChain{node}
+}
+
+func (ic IpfsChain) PutBlock(blkKey, blkVal []byte) {
+
+	/*
+	dagNode := &dag.Node{Data: ft.FolderPBData()}
+
+	*/
+
+}
+
+func (ic IpfsChain) GetBlock(blkHeight int64) (rsha *wire.ShaHash, rbuf []byte, err error) {
+	return nil, nil, nil								
+}
+
+func (ic IpfsChain) DeleteBlock(height int64) {
+}
 
 /*
 
