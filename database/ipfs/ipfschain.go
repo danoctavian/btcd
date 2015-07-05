@@ -11,6 +11,7 @@ import (
 	mh "github.com/ipfs/go-ipfs/Godeps/_workspace/src/github.com/jbenet/go-multihash"
   "github.com/btcsuite/goleveldb/leveldb"
   "github.com/btcsuite/goleveldb/leveldb/opt"
+  "github.com/btcsuite/btclog"
 
   "golang.org/x/net/context"
   "fmt"
@@ -44,6 +45,10 @@ type IpfsChain struct {
 	lBatch *leveldb.Batch
 	ro  *opt.ReadOptions
 	wo  *opt.WriteOptions
+
+	// ipfs
+
+	emptyNode *dag.Node
 }
 
 func NewIpfsChain(lDb *leveldb.DB, lBatch *leveldb.Batch, ro *opt.ReadOptions, wo *opt.WriteOptions) *IpfsChain {
@@ -52,7 +57,7 @@ func NewIpfsChain(lDb *leveldb.DB, lBatch *leveldb.Batch, ro *opt.ReadOptions, w
 	/* run ipfs node */
   r, err := fsrepo.Open("~/.ipfs")
   if err != nil {
-    panic(err)
+    panic("failed to open ipfs repo")
   }
 
   nb := core.NewNodeBuilder().Online()
@@ -63,13 +68,22 @@ func NewIpfsChain(lDb *leveldb.DB, lBatch *leveldb.Batch, ro *opt.ReadOptions, w
 
   node, err := nb.Build(ctx)
   if err != nil {
-    panic(err)
+    panic("failed to build an ipfs node")
   }
 
-	return &IpfsChain{node, lDb, lBatch, ro, wo}
+  /*
+  	a pre-genesis dummy 
+  */
+  emptyNode := &dag.Node{Data: ([]byte)("i am a dummy.")}
+
+  node.DAG.Add(emptyNode)
+
+	return &IpfsChain{node, lDb, lBatch, ro, wo, emptyNode}
 }
 
 func (ic IpfsChain) PutBlock(blkHeight int64, sha, prevSha *wire.ShaHash, buf []byte) {
+
+  fmt.Println("###### storing a block")
 	
 	block, _ := btcutil.NewBlockFromBytes(buf)
 
@@ -81,17 +95,27 @@ func (ic IpfsChain) PutBlock(blkHeight int64, sha, prevSha *wire.ShaHash, buf []
   // store the header data only in the root dagNode
   dagNode := &dag.Node{Data: w.Bytes()}
 
+  fmt.Printf(" the txsNode node is %s", txsNode)
   dagNode.AddNodeLink(transactionsLink, txsNode)
 
 	// FIXME: try with this; it probably fails because of the dummy link
 	//ic.node.DAG.AddRecursive(dagNode)
 
 	if (blkHeight == 0) { // the genesis block, there is no previous
-		dagNode.AddRawLink(prevBlockLink, preGenesisDummyLink)
+
+		err := dagNode.AddRawLink(prevBlockLink, preGenesisDummyLink)
+		//err := dagNode.AddNodeLink(prevBlockLink, ic.emptyNode)
+		if (err != nil) {
+			fmt.Println("failed to add node link")
+			return
+		}
+
 	} else { // it's not the first block
 		prevNodeKeyBytes, _ := ic.lDb.Get(btcHashToKey(prevSha), ic.ro)
 
 		prevNodeKey := ipfsKeyFromBytes(prevNodeKeyBytes)
+
+		fmt.Printf("the prev node key is  %s", prevNodeKey)
 
 		ctx, _ := context.WithTimeout(context.Background(), time.Second * 30) 
 		prevNode, _ := ic.node.DAG.Get(ctx, prevNodeKey)
@@ -113,17 +137,29 @@ func (ic IpfsChain) PutBlock(blkHeight int64, sha, prevSha *wire.ShaHash, buf []
 }
 
 func (ic IpfsChain) GetBlock(blkHeight int64) (rsha *wire.ShaHash, rbuf []byte, err error) {
+
+  fmt.Println("###### fetching a block")
+
 	key := int64ToKey(blkHeight)
 	ipfsKeyBytes, err := ic.lDb.Get(key, ic.ro)
 
-	if (err != nil) {return}
+	if (err != nil) {
+		fmt.Printf("fetching the ipfs key failed %v", err)
+		return
+	}
 
 	ipfsKey := ipfsKeyFromBytes(ipfsKeyBytes)
 
 	ctx, _ := context.WithTimeout(context.Background(), time.Second * 30) 
 
+	fmt.Printf("the ipfskey is %v", ipfsKeyBytes)
+	fmt.Println("the ipfskey is %v", ipfsKey)
+
 	dagNode, err := ic.node.DAG.Get(ctx, ipfsKey)
-	if (err != nil) {return}
+	if (err != nil) {
+		fmt.Printf("reading dag node failed %v", err)
+		return
+	}
 
 	txsNodeLink, err := dagNode.GetNodeLink(transactionsLink)
 	if (err != nil) {return}
@@ -229,6 +265,8 @@ var transactionsLink = "transactions"
 var prevBlockLink = "prevBlock"
 
 var emptyLink, _ = mh.FromHexString("QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n")
+
+var log = btclog.Disabled
 
 var preGenesisDummyLink = &dag.Link{Name: prevBlockLink,
 																Size: 0,
