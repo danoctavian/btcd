@@ -318,6 +318,12 @@ func writeElements(w io.Writer, elements ...interface{}) error {
 	return nil
 }
 
+//FIXME: remove dup 
+
+func ReadVarInt(r io.Reader, pver uint32) (uint64, error) {
+	return readVarInt(r, pver)
+}
+
 // readVarInt reads a variable length integer from r and returns it as a uint64.
 func readVarInt(r io.Reader, pver uint32) (uint64, error) {
 	var b [8]byte
@@ -355,6 +361,11 @@ func readVarInt(r io.Reader, pver uint32) (uint64, error) {
 	}
 
 	return rv, nil
+}
+
+// FIXME: remove dup
+func WriteVarInt(w io.Writer, pver uint32, val uint64) error {
+	return writeVarInt(w, pver, val)
 }
 
 // writeVarInt serializes val to w using a variable number of bytes depending

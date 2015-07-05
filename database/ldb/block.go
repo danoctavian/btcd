@@ -115,14 +115,9 @@ func (db *LevelDb) setBlk(sha *wire.ShaHash, prevSha *wire.ShaHash, blkHeight in
 	binary.LittleEndian.PutUint64(lw[0:8], uint64(blkHeight))
 
 	shaKey := shaBlkToKey(sha)
-	blkKey := int64ToKey(blkHeight)
-
-	blkVal := make([]byte, len(sha)+len(buf))
-	copy(blkVal[0:], sha[:])
-	copy(blkVal[len(sha):], buf)
 
 	db.lBatch().Put(shaKey, lw[:])
-	db.blockstore.PutBlock(blkKey, prevSha, blkVal)
+	db.blockstore.PutBlock(blkHeight, sha, prevSha, buf)
 }
 
 // insertSha stores a block hash and its associated data block with a

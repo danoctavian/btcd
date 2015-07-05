@@ -186,8 +186,8 @@ func openDB(dbpath string, create bool) (pbdb database.Db, err error) {
 			db.txSpentUpdateMap = make(map[wire.ShaHash]*spentTxUpdate)
 
 			// FIXME: remove the first implementation
-			db.blockstore =  LdbBlockStore{db.lBatch(), db.lDb, db.ro}
-			db.blockstore =  ipfs.NewIpfsChain()
+			//db.blockstore =  LdbBlockStore{db.lBatch(), db.lDb, db.ro}
+			if (true) {db.blockstore =  ipfs.NewIpfsChain(db.lDb, db.lBatch(), db.ro, db.wo)}
 			pbdb = &db
 		}
 	}()

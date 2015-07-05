@@ -6,29 +6,49 @@ import (
 	"github.com/ipfs/go-ipfs/core"
 	fsrepo "github.com/ipfs/go-ipfs/repo/fsrepo"
 	dag "github.com/ipfs/go-ipfs/merkledag"
+	"github.com/btcsuite/btcutil"
+	key "github.com/ipfs/go-ipfs/blocks/key"
+	mh "github.com/ipfs/go-ipfs/Godeps/_workspace/src/github.com/jbenet/go-multihash"
+  "github.com/btcsuite/goleveldb/leveldb"
+  "github.com/btcsuite/goleveldb/leveldb/opt"
 
   "golang.org/x/net/context"
-
+  "fmt"
+  "bytes"
+  "strconv"
+  "time"
 /*
 	"encoding/binary"
-	"fmt"
 	"os"
 	"strconv"
 	"sync"
 
 	"github.com/btcsuite/btcd/database"
 	"github.com/btcsuite/btclog"
-	"github.com/btcsuite/btcutil"
+
 	*/
 )
+
+/*
+Stores block data in IPFS.
+stores an index (btc hash -> ipfschain hash) in LevelDB. 
+
+*/
 
 // FIXME: implement
 type IpfsChain struct {
 	node *core.IpfsNode
+
+	// level db
+	lDb *leveldb.DB
+	lBatch *leveldb.Batch
+	ro  *opt.ReadOptions
+	wo  *opt.WriteOptions
 }
 
-func NewIpfsChain() *IpfsChain {
+func NewIpfsChain(lDb *leveldb.DB, lBatch *leveldb.Batch, ro *opt.ReadOptions, wo *opt.WriteOptions) *IpfsChain {
 
+	fmt.Println("###### Running an ipfs node")
 	/* run ipfs node */
   r, err := fsrepo.Open("~/.ipfs")
   if err != nil {
@@ -46,21 +66,177 @@ func NewIpfsChain() *IpfsChain {
     panic(err)
   }
 
-	return &IpfsChain{node}
+	return &IpfsChain{node, lDb, lBatch, ro, wo}
 }
 
-func (ic IpfsChain) PutBlock(blkKey []byte, prevSha *wire.ShaHash, blkVal []byte) {
+func (ic IpfsChain) PutBlock(blkHeight int64, sha, prevSha *wire.ShaHash, buf []byte) {
+	
+	block, _ := btcutil.NewBlockFromBytes(buf)
 
+	txsNode, _ := txsToNode(block.MsgBlock().Transactions)
 
-	dagNode := &dag.Node{Data: []byte("hello my friend")}
-	ic.node.DAG.Add(dagNode)
+  var w bytes.Buffer
+	block.MsgBlock().Header.Serialize(&w)
+
+  // store the header data only in the root dagNode
+  dagNode := &dag.Node{Data: w.Bytes()}
+
+  dagNode.AddNodeLink(transactionsLink, txsNode)
+
+	// FIXME: try with this; it probably fails because of the dummy link
+	//ic.node.DAG.AddRecursive(dagNode)
+
+	if (blkHeight == 0) { // the genesis block, there is no previous
+		dagNode.AddRawLink(prevBlockLink, preGenesisDummyLink)
+	} else { // it's not the first block
+		prevNodeKeyBytes, _ := ic.lDb.Get(btcHashToKey(prevSha), ic.ro)
+
+		prevNodeKey := ipfsKeyFromBytes(prevNodeKeyBytes)
+
+		ctx, _ := context.WithTimeout(context.Background(), time.Second * 30) 
+		prevNode, _ := ic.node.DAG.Get(ctx, prevNodeKey)
+
+		dagNode.AddNodeLink(prevBlockLink, prevNode)
+	}
+
+	/*
+		add the children and then the parent node
+	*/
+	ic.node.DAG.Add(txsNode)
+  headerKey, _ := ic.node.DAG.Add(dagNode)
+
+	blkKey := int64ToKey(blkHeight)
+	ic.lBatch.Put(blkKey, ipfsKeyToBytes(headerKey))
+
+	// map btc hash to the key of the object in ipfs
+	ic.lBatch.Put(btcHashToKey(block.Sha()), ipfsKeyToBytes(headerKey))
 }
 
 func (ic IpfsChain) GetBlock(blkHeight int64) (rsha *wire.ShaHash, rbuf []byte, err error) {
-	return nil, nil, nil								
+	key := int64ToKey(blkHeight)
+	ipfsKeyBytes, err := ic.lDb.Get(key, ic.ro)
+
+	if (err != nil) {return}
+
+	ipfsKey := ipfsKeyFromBytes(ipfsKeyBytes)
+
+	ctx, _ := context.WithTimeout(context.Background(), time.Second * 30) 
+
+	dagNode, err := ic.node.DAG.Get(ctx, ipfsKey)
+	if (err != nil) {return}
+
+	txsNodeLink, err := dagNode.GetNodeLink(transactionsLink)
+	if (err != nil) {return}
+
+  //parsing the whole 
+	r := bytes.NewReader(append(dagNode.Data, txsNodeLink.Node.Data...))
+
+	msgBlock := &wire.MsgBlock{}
+	err = msgBlock.BtcDecode(r, pver)
+	if (err != nil) {return}
+
+	block := btcutil.NewBlock(msgBlock)
+	blockBytes, err := block.Bytes()
+	if (err != nil) {return}
+
+	return block.Sha(), blockBytes, nil								
 }
 
 func (ic IpfsChain) DeleteBlock(height int64) {
+}
+
+
+func txsToNode(txs []*wire.MsgTx) (dagNode *dag.Node, err error) {
+  var w bytes.Buffer
+
+	err = wire.WriteVarInt(&w, pver, uint64(len(txs)))
+	if err != nil {
+		return
+	}
+
+	for _, tx := range txs {
+		err = tx.BtcEncode(&w, pver)
+		if err != nil {
+			return
+		}
+	}
+
+  serializedTxs := w.Bytes()
+
+	dagNode = &dag.Node{Data: serializedTxs}
+	return
+}
+
+func decodeTxs(buf []byte) (transactions []*wire.MsgTx, err error) {
+	r := bytes.NewReader(buf)
+
+	txCount, err := wire.ReadVarInt(r, pver)
+	if err != nil {
+		return
+	}
+
+	transactions = make([]*wire.MsgTx, 0, txCount)
+	for i := uint64(0); i < txCount; i++ {
+		tx := wire.MsgTx{}
+		err = tx.BtcDecode(r, pver)
+		if err != nil {
+			return
+		}
+		transactions = append(transactions, &tx)
+	}
+	return
+}
+
+/*
+====================
+ipfschain hash index
+====================
+
+hash of a bitcoin element mapped to the hash
+of the ipfs object wrapping the bitcoin object
+*/
+var chainIndexPrefix = []byte("b+-")
+
+// TODO: remove these here harcodingk
+var pver uint32 = 0
+
+func btcHashToKey(sha *wire.ShaHash) []byte {
+	shaBytes := sha.Bytes()
+	recordLen := len(chainIndexPrefix) + len(shaBytes) 
+	record := make([]byte, recordLen, recordLen)
+
+	copy(record[0:len(chainIndexPrefix)], chainIndexPrefix)
+	copy(record[len(chainIndexPrefix):recordLen], shaBytes)
+
+	return record
+}
+
+/*
+	serializing/deserializing ipfs keys for levelDB
+*/
+func ipfsKeyToBytes(k key.Key) []byte {
+	return ([]byte)(k.B58String())
+}
+
+func ipfsKeyFromBytes(buf []byte) key.Key {
+	return key.B58KeyDecode(string(buf))
+}
+
+var transactionsLink = "transactions"
+
+var prevBlockLink = "prevBlock"
+
+var emptyLink, _ = mh.FromHexString("QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n")
+
+var preGenesisDummyLink = &dag.Link{Name: prevBlockLink,
+																Size: 0,
+																Hash: emptyLink,
+																Node: nil}
+
+// dup of the function in leveldb
+func int64ToKey(keyint int64) []byte {
+	key := strconv.FormatInt(keyint, 10)
+	return []byte(key)
 }
 
 /*
