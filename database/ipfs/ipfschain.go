@@ -103,8 +103,8 @@ func (ic IpfsChain) PutBlock(blkHeight int64, sha, prevSha *wire.ShaHash, buf []
 
 	if (blkHeight == 0) { // the genesis block, there is no previous
 
-		err := dagNode.AddRawLink(prevBlockLink, preGenesisDummyLink)
-		//err := dagNode.AddNodeLink(prevBlockLink, ic.emptyNode)
+		//err := dagNode.AddRawLink(prevBlockLink, preGenesisDummyLink)
+		err := dagNode.AddNodeLink(prevBlockLink, ic.emptyNode)
 		if (err != nil) {
 			fmt.Println("failed to add node link")
 			return
@@ -164,12 +164,28 @@ func (ic IpfsChain) GetBlock(blkHeight int64) (rsha *wire.ShaHash, rbuf []byte, 
 	txsNodeLink, err := dagNode.GetNodeLink(transactionsLink)
 	if (err != nil) {return}
 
+	fmt.Println("collected txs node link")
+
+	txsNode, err := txsNodeLink.GetNode(ctx, ic.node.DAG)
+	if (err != nil) {
+		fmt.Println("got error %s when loading txs node ", err)
+		return
+	}
+
+	fmt.Println("wtf man")
+
   //parsing the whole 
-	r := bytes.NewReader(append(dagNode.Data, txsNodeLink.Node.Data...))
+	r := bytes.NewReader(append(dagNode.Data, txsNode.Data...))
+
+	fmt.Println("msg block construction")
 
 	msgBlock := &wire.MsgBlock{}
+
 	err = msgBlock.BtcDecode(r, pver)
-	if (err != nil) {return}
+	if (err != nil) {
+		fmt.Println("got error %s when decoding ", err)
+		return
+	}
 
 	block := btcutil.NewBlock(msgBlock)
 	blockBytes, err := block.Bytes()
