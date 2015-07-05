@@ -143,6 +143,8 @@ func (ic IpfsChain) GetBlock(blkHeight int64) (rsha *wire.ShaHash, rbuf []byte, 
 }
 
 func (ic IpfsChain) DeleteBlock(height int64) {
+	// TODO: do something about the blocks in ipfs
+	ic.lBatch.Delete(int64ToKey(height))
 }
 
 
