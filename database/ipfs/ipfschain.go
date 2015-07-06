@@ -18,16 +18,6 @@ import (
   "bytes"
   "strconv"
   "time"
-/*
-	"encoding/binary"
-	"os"
-	"strconv"
-	"sync"
-
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btclog"
-
-	*/
 )
 
 /*
