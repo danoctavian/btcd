@@ -63,8 +63,8 @@ func NewIpfsChain(lDb *leveldb.DB, lBatch *leveldb.Batch, ro *opt.ReadOptions, w
   nb := core.NewNodeBuilder().Online()
   nb.SetRepo(r)
 
-  ctx, cancel := context.WithCancel(context.Background())
-  defer cancel()
+  ctx, _ := context.WithCancel(context.Background())
+  //defer cancel()
 
   node, err := nb.Build(ctx)
   if err != nil {
@@ -82,8 +82,6 @@ func NewIpfsChain(lDb *leveldb.DB, lBatch *leveldb.Batch, ro *opt.ReadOptions, w
 }
 
 func (ic IpfsChain) PutBlock(blkHeight int64, sha, prevSha *wire.ShaHash, buf []byte) {
-
-  fmt.Println("###### storing a block")
 	
 	block, _ := btcutil.NewBlockFromBytes(buf)
 
@@ -95,7 +93,7 @@ func (ic IpfsChain) PutBlock(blkHeight int64, sha, prevSha *wire.ShaHash, buf []
   // store the header data only in the root dagNode
   dagNode := &dag.Node{Data: w.Bytes()}
 
-  fmt.Printf(" the txsNode node is %s", txsNode)
+//  fmt.Printf(" the txsNode node is %s", txsNode)
   dagNode.AddNodeLink(transactionsLink, txsNode)
 
 	// FIXME: try with this; it probably fails because of the dummy link
@@ -106,7 +104,6 @@ func (ic IpfsChain) PutBlock(blkHeight int64, sha, prevSha *wire.ShaHash, buf []
 		//err := dagNode.AddRawLink(prevBlockLink, preGenesisDummyLink)
 		err := dagNode.AddNodeLink(prevBlockLink, ic.emptyNode)
 		if (err != nil) {
-			fmt.Println("failed to add node link")
 			return
 		}
 
@@ -115,7 +112,7 @@ func (ic IpfsChain) PutBlock(blkHeight int64, sha, prevSha *wire.ShaHash, buf []
 
 		prevNodeKey := ipfsKeyFromBytes(prevNodeKeyBytes)
 
-		fmt.Printf("the prev node key is  %s", prevNodeKey)
+//		fmt.Printf("the prev node key is  %s", prevNodeKey)
 
 		ctx, _ := context.WithTimeout(context.Background(), time.Second * 30) 
 		prevNode, _ := ic.node.DAG.Get(ctx, prevNodeKey)
@@ -137,9 +134,6 @@ func (ic IpfsChain) PutBlock(blkHeight int64, sha, prevSha *wire.ShaHash, buf []
 }
 
 func (ic IpfsChain) GetBlock(blkHeight int64) (rsha *wire.ShaHash, rbuf []byte, err error) {
-
-  fmt.Println("###### fetching a block")
-
 	key := int64ToKey(blkHeight)
 	ipfsKeyBytes, err := ic.lDb.Get(key, ic.ro)
 
@@ -150,10 +144,7 @@ func (ic IpfsChain) GetBlock(blkHeight int64) (rsha *wire.ShaHash, rbuf []byte, 
 
 	ipfsKey := ipfsKeyFromBytes(ipfsKeyBytes)
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Second * 30) 
-
-	fmt.Printf("the ipfskey is %v", ipfsKeyBytes)
-	fmt.Println("the ipfskey is %v", ipfsKey)
+	ctx, _ := context.WithTimeout(context.Background(), time.Second * 30)
 
 	dagNode, err := ic.node.DAG.Get(ctx, ipfsKey)
 	if (err != nil) {
@@ -164,26 +155,17 @@ func (ic IpfsChain) GetBlock(blkHeight int64) (rsha *wire.ShaHash, rbuf []byte, 
 	txsNodeLink, err := dagNode.GetNodeLink(transactionsLink)
 	if (err != nil) {return}
 
-	fmt.Println("collected txs node link")
-
 	txsNode, err := txsNodeLink.GetNode(ctx, ic.node.DAG)
 	if (err != nil) {
-		fmt.Println("got error %s when loading txs node ", err)
 		return
 	}
 
-	fmt.Println("wtf man")
-
   //parsing the whole 
 	r := bytes.NewReader(append(dagNode.Data, txsNode.Data...))
-
-	fmt.Println("msg block construction")
-
 	msgBlock := &wire.MsgBlock{}
 
 	err = msgBlock.BtcDecode(r, pver)
 	if (err != nil) {
-		fmt.Println("got error %s when decoding ", err)
 		return
 	}
 
