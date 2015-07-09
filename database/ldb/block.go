@@ -229,6 +229,7 @@ func (db *LevelDb) FetchHeightRange(startHeight, endHeight int64) (rshalist []wi
 	for height := startHeight; height < endidx; height++ {
 		// TODO(drahn) fix blkFile from height
 
+/*
 		key := int64ToKey(height)
 		blkVal, lerr := db.lDb.Get(key, db.ro)
 		if lerr != nil {
@@ -237,7 +238,14 @@ func (db *LevelDb) FetchHeightRange(startHeight, endHeight int64) (rshalist []wi
 
 		var sha wire.ShaHash
 		sha.SetBytes(blkVal[0:32])
-		shalist = append(shalist, sha)
+		*/
+
+		sha, _, lerr := db.getBlkByHeight(height)
+		if lerr != nil {
+			break
+		}
+
+		shalist = append(shalist, *sha)
 	}
 
 	if err != nil {
