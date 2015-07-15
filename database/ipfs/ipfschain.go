@@ -9,15 +9,15 @@ import (
 	"github.com/btcsuite/btcutil"
 	key "github.com/ipfs/go-ipfs/blocks/key"
 	mh "github.com/ipfs/go-ipfs/Godeps/_workspace/src/github.com/jbenet/go-multihash"
-  "github.com/btcsuite/goleveldb/leveldb"
-  "github.com/btcsuite/goleveldb/leveldb/opt"
-  "github.com/btcsuite/btclog"
+	"github.com/btcsuite/goleveldb/leveldb"
+	"github.com/btcsuite/goleveldb/leveldb/opt"
+	"github.com/btcsuite/btclog"
 
-  "golang.org/x/net/context"
-  "fmt"
-  "bytes"
-  "strconv"
-  "time"
+	"golang.org/x/net/context"
+	"fmt"
+	"bytes"
+	"strconv"
+	"time"
 )
 
 /*
@@ -45,8 +45,8 @@ func NewIpfsChain(lDb *leveldb.DB, lBatch *leveldb.Batch, ro *opt.ReadOptions, w
 
 	fmt.Println("###### Running an ipfs node")
 	/* run ipfs node */
-  r, err := fsrepo.Open("~/.ipfs")
-  if err != nil {
+	r, err := fsrepo.Open("~/.ipfs")
+	if err != nil {
 		panic("failed to open ipfs repo")
 	}
 
@@ -60,7 +60,7 @@ func NewIpfsChain(lDb *leveldb.DB, lBatch *leveldb.Batch, ro *opt.ReadOptions, w
 
 	node, err := nb.Build(ctx)
 	if err != nil {
-	    panic("failed to build an ipfs node")
+		panic("failed to build an ipfs node")
 	}
 
 	/*
@@ -172,7 +172,7 @@ func (ic IpfsChain) DeleteBlock(height int64) {
 
 
 func txsToNode(txs []*wire.MsgTx) (dagNode *dag.Node, err error) {
-  var w bytes.Buffer
+	var w bytes.Buffer
 
 	err = wire.WriteVarInt(&w, pver, uint64(len(txs)))
 	if err != nil {
@@ -186,7 +186,7 @@ func txsToNode(txs []*wire.MsgTx) (dagNode *dag.Node, err error) {
 		}
 	}
 
-  serializedTxs := w.Bytes()
+	serializedTxs := w.Bytes()
 
 	dagNode = &dag.Node{Data: serializedTxs}
 	return
