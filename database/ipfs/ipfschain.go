@@ -47,44 +47,45 @@ func NewIpfsChain(lDb *leveldb.DB, lBatch *leveldb.Batch, ro *opt.ReadOptions, w
 	/* run ipfs node */
   r, err := fsrepo.Open("~/.ipfs")
   if err != nil {
-    panic("failed to open ipfs repo")
-  }
+		panic("failed to open ipfs repo")
+	}
 
-  nb := core.NewNodeBuilder().Online()
-  nb.SetRepo(r)
+	nb := core.NewNodeBuilder().Online()
+	nb.SetRepo(r)
 
-  ctx, _ := context.WithCancel(context.Background())
-  //defer cancel()
+	ctx, _ := context.WithCancel(context.Background())
 
-  node, err := nb.Build(ctx)
-  if err != nil {
-    panic("failed to build an ipfs node")
-  }
+	// FIXME: reenable this as cleanup method for the blockstore
+	//defer cancel()
 
-  /*
-  	a pre-genesis dummy 
-  */
-  emptyNode := &dag.Node{Data: ([]byte)("i am a dummy.")}
+	node, err := nb.Build(ctx)
+	if err != nil {
+	    panic("failed to build an ipfs node")
+	}
 
-  node.DAG.Add(emptyNode)
+	/*
+	    a pre-genesis dummy 
+	*/
+	emptyNode := &dag.Node{Data: ([]byte)("i am a dummy.")}
+
+	node.DAG.Add(emptyNode)
 
 	return &IpfsChain{node, lDb, lBatch, ro, wo, emptyNode}
 }
 
 func (ic IpfsChain) PutBlock(blkHeight int64, sha, prevSha *wire.ShaHash, buf []byte) {
-	
+
 	block, _ := btcutil.NewBlockFromBytes(buf)
 
 	txsNode, _ := txsToNode(block.MsgBlock().Transactions)
 
-  var w bytes.Buffer
+	var w bytes.Buffer
 	block.MsgBlock().Header.Serialize(&w)
 
-  // store the header data only in the root dagNode
-  dagNode := &dag.Node{Data: w.Bytes()}
+	// store the header data only in the root dagNode
+	dagNode := &dag.Node{Data: w.Bytes()}
 
-//  fmt.Printf(" the txsNode node is %s", txsNode)
-  dagNode.AddNodeLink(transactionsLink, txsNode)
+	dagNode.AddNodeLink(transactionsLink, txsNode)
 
 	// FIXME: try with this; it probably fails because of the dummy link
 	//ic.node.DAG.AddRecursive(dagNode)
@@ -102,8 +103,6 @@ func (ic IpfsChain) PutBlock(blkHeight int64, sha, prevSha *wire.ShaHash, buf []
 
 		prevNodeKey := ipfsKeyFromBytes(prevNodeKeyBytes)
 
-//		fmt.Printf("the prev node key is  %s", prevNodeKey)
-
 		ctx, _ := context.WithTimeout(context.Background(), time.Second * 30) 
 		prevNode, _ := ic.node.DAG.Get(ctx, prevNodeKey)
 
@@ -114,7 +113,7 @@ func (ic IpfsChain) PutBlock(blkHeight int64, sha, prevSha *wire.ShaHash, buf []
 		add the children and then the parent node
 	*/
 	ic.node.DAG.Add(txsNode)
-  headerKey, _ := ic.node.DAG.Add(dagNode)
+	headerKey, _ := ic.node.DAG.Add(dagNode)
 
 	blkKey := int64ToKey(blkHeight)
 	ic.lBatch.Put(blkKey, ipfsKeyToBytes(headerKey))
